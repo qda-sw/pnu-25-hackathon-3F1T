@@ -9325,8 +9325,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _speed: 5
   _health: 100
+  inv: {fileID: 706825942}
   _score: 0
-  _rb: {fileID: 0}
+  _rb: {fileID: 706825938}
+--- !u!50 &706825938 stripped
+Rigidbody2D:
+  m_CorrespondingSourceObject: {fileID: 2687500042202952402, guid: 296f4ca98ffe11245b7d77a0e4ed524f, type: 3}
+  m_PrefabInstance: {fileID: 1242662850}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &706825942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 706825928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36eee7c95d7d7a64fbe1d2c7c96a76cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerSmooth: {fileID: 0}
+  speedMod: 0
+  cameraView: 0
 --- !u!1001 &1242662850
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9410,6 +9431,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1198292498285705213, guid: 296f4ca98ffe11245b7d77a0e4ed524f, type: 3}
       insertIndex: 4
       addedObject: {fileID: 706825935}
+    - targetCorrespondingSourceObject: {fileID: 1198292498285705213, guid: 296f4ca98ffe11245b7d77a0e4ed524f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 706825942}
   m_SourcePrefab: {fileID: 100100000, guid: 296f4ca98ffe11245b7d77a0e4ed524f, type: 3}
 --- !u!1 &1322833659
 GameObject:

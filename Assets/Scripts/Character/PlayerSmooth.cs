@@ -6,6 +6,8 @@ public class PlayerSmooth : MonoBehaviour, IDamageable
     [SerializeField] private float _speed = 100.0f;
     [SerializeField] private int _health = 100;
 
+    public RedKey inv;
+
     [SerializeField] private int _score = 0;
     [SerializeField] private Rigidbody2D _rb;
     private Vector2 _movement;
@@ -43,7 +45,7 @@ public class PlayerSmooth : MonoBehaviour, IDamageable
         //Debug.Log(acceleration);
         //Debug.Log(velocity);
         //Debug.Log(_rb.position);
-        _rb.MovePosition(_rb.position + velocity * _speed * Time.fixedDeltaTime);
+        _rb.MovePosition(_rb.position + velocity * _speed * Time.fixedDeltaTime * inv.speedMod);
     }
 
     private void Die()
