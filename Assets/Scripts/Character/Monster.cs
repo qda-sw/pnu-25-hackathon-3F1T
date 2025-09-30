@@ -26,7 +26,7 @@ public sealed class Monster : MonoBehaviour, IDamageable
     private void Awake()
     {
         _maxHealth = Mathf.Max(1, _maxHealth);
-        _health    = Mathf.Clamp(_health, 1, _maxHealth);
+        _health = Mathf.Clamp(_health, 1, _maxHealth);
 
         var col = GetComponent<BoxCollider2D>();
         col.isTrigger = true; // 접촉 데미지는 트리거로 처리
@@ -112,12 +112,18 @@ public sealed class Monster : MonoBehaviour, IDamageable
         // 키 보유자라면 드롭은 1회만 — 이미 스폰 시점에 커밋했지만 안전하게 드롭도 수행
         if (_isKeyBearer && _keyPrefab != null)
         {
-            // Instantiate(_keyPrefab, transform.position, Quaternion.identity);
-            // if (!string.IsNullOrEmpty(_doorId))
-            //     UniqueDoorRegistry.MarkKeyDropped(_doorId);
+            Instantiate(_keyPrefab, transform.position, Quaternion.identity);
         }
 
         gameObject.SetActive(false); // 풀링 고려. 필요시 Destroy(gameObject)로 교체
+    }
+
+    public void RegisterKey(string doorId, GameObject keyPrefab)
+    {
+        _doorId = doorId;
+        _keyPrefab = keyPrefab;
+        _isKeyBearer = true;
+
     }
 
     // 에디터 디버그

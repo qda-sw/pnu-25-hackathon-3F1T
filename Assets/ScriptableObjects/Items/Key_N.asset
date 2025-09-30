@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Key_N
   m_EditorClassIdentifier: 
   _itemName: 
-  _icon: {fileID: 0}
+  _icon: {fileID: -1996499692679563476, guid: f6d2c50ac95bc73438dcae33bf3c3f61, type: 3}
   _value: 0
   _id: K_N

@@ -9,10 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cabfb8e090b2ede49a874631bd7a5369, type: 3}
-  m_Name: Key_W
+  m_Script: {fileID: 11500000, guid: 696142ab7e0adf0478f66a5c9e06a168, type: 3}
+  m_Name: NextPhaseEventChannel
   m_EditorClassIdentifier: 
-  _itemName: 
-  _icon: {fileID: -2001383285709320217, guid: f6d2c50ac95bc73438dcae33bf3c3f61, type: 3}
-  _value: 0
-  _id: K_W
+  _guid: 
+  description: 
