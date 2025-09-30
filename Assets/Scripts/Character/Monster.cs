@@ -1,34 +1,36 @@
 ﻿using UnityEngine;
-using System;
-public class Monster : MonoBehaviour, IDamageable
+
+[DisallowMultipleComponent]
+[RequireComponent(typeof(BoxCollider2D))]
+public sealed class Monster : MonoBehaviour, IDamageable
 {
     [Header("Move")]
-    [SerializeField] private float _speed = 3f;
-    [SerializeField] private Transform _target;
+    [SerializeField, Min(0f)] private float _speed = 3f;            // 이동 속도
+    [SerializeField] private Transform _target;                      // 추적 대상(비우면 Start에서 Player 자동 탐색)
 
-    [Header("Health / Damage")]
-    [SerializeField] private int _health = 100;
-    [SerializeField] private int _damage = 10;
+    [Header("Vitals")]
+    [SerializeField, Min(1)] private int _maxHealth = 100;           // 최대 체력
+    [SerializeField] private int _health = 100;                       // 현재 체력(관찰용)
+    [SerializeField, Min(0)] private int _defense = 0;               // 방어력: 실피해 = 피해 / max(1, 방어력), 소수점 1자리 반올림
 
-    [Header("Melee Attack")]
-    [SerializeField] private float _meleeRange = 1.2f;
-    [SerializeField] private float _meleeCooldown = 0.8f;
-    private float _lastMeleeTime = -999f;
+    [Header("Contact Damage")]
+    [SerializeField, Min(0)] private int _contactDamage = 10;        // 접촉 피해량(플레이어가 받는 데미지)
+    [SerializeField, Min(0f)] private float _damageInterval = 0.5f;  // 접촉 피해 간격(초)
+    private float _lastDamageTime = -999f;
 
-    [Header("Skill (Optional)")]
-    [SerializeField] private float _skillRange = 4.5f;
-    [SerializeField] private float _skillCooldown = 3f;
-    [SerializeField] private LayerMask _skillLineMask;                 // 시야 가리는 레이어(벽 등)
-    [SerializeField] private GameObject _projectilePrefab;             // 투사체(선택)
-    [SerializeField] private float _projectileSpeed = 8f;              // 투사체 속도
-    [SerializeField] private Transform _castOrigin;                     // 투사체 발사 위치(없으면 transform)
+    [Header("Key Drop (per Door)")]
+    [SerializeField] private bool _isKeyBearer = false;              // 이 개체가 키 보유자인가?
+    [SerializeField] private GameObject _keyPrefab;                   // 드롭할 키 프리팹
+    [SerializeField] private string _doorId = "";                     // 이 몬스터가 속한 문 ID(문당 1회 드롭 보장용)
 
-    [Header("Key / Door Integration")]
-    [SerializeField] private string _carriedKeyId = "";                // 이 몬스터가 보유한 열쇠 ID(예: "BossKey") 아이템 보유 여부
-    public string CarriedKeyId => _carriedKeyId;
+    private void Awake()
+    {
+        _maxHealth = Mathf.Max(1, _maxHealth);
+        _health    = Mathf.Clamp(_health, 1, _maxHealth);
 
-    public event Action<Monster> OnDied;                               // 스포너/게임매니저 등이 구독 가능
-
+        var col = GetComponent<BoxCollider2D>();
+        col.isTrigger = true; // 접촉 데미지는 트리거로 처리
+    }
 
     private void Start()
     {
@@ -37,126 +39,95 @@ public class Monster : MonoBehaviour, IDamageable
             var p = FindFirstObjectByType<Player>();
             if (p != null) _target = p.transform;
         }
-        if (_castOrigin == null) _castOrigin = transform;
+
+        // 스폰 시점에 이미 해당 문에서 키가 커밋되어 있으면 이 개체는 키 보유자로 동작하지 않게 함
+        // if (!string.IsNullOrEmpty(_doorId) && UniqueDoorRegistry.IsKeyCommitted(_doorId))
+        //     _isKeyBearer = false;
     }
+
     private void FixedUpdate()
-    {
-        if (_target != null)
-        {
-            Vector2 direction = (_target.position - transform.position).normalized;
-            transform.position += (Vector3)(direction * _speed * Time.fixedDeltaTime);
-        }
-    }
-    private void Update()
     {
         if (_target == null) return;
 
-        // 근접공격 시도
-        TryMelee();
-
-        // 스킬 시도 (투사체가 없더라도 훅은 남겨둠)
-        TrySkill();
+        Vector2 dir = ((Vector2)(_target.position - transform.position)).normalized;
+        transform.position += (Vector3)(dir * _speed * Time.fixedDeltaTime);
     }
-    private void TryMelee()
-    {
-        if (Time.time < _lastMeleeTime + _meleeCooldown) return;
-        if (Vector2.Distance(transform.position, _target.position) > _meleeRange) return;
 
-        // 실제 히트는 트리거나 직접 판정으로 처리 가능—여기서는 직접 판정
-        if (_target.TryGetComponent<Player>(out var player))
+    // 플레이어와 닿아있는 동안 일정 간격으로 피해를 줌
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (!other || !other.CompareTag("Player")) return;
+        if (Time.time < _lastDamageTime + _damageInterval) return;
+
+        // Player는 IDamageable(int)을 구현하므로 int 경로 호출
+        if (other.TryGetComponent<IDamageable>(out var dmg))
         {
-            player.TakeDamage(_damage);
-            _lastMeleeTime = Time.time;
+            dmg.TakeDamage(_contactDamage);
+            _lastDamageTime = Time.time;
         }
     }
 
-    private void TrySkill()
+    // 외부(스포너)에서 이 몬스터를 키 보유자로 초기화하고 싶을 때 사용
+    // public void InitAsKeyBearer(string doorId, GameObject keyPrefab)
+    // {
+    //     if (!string.IsNullOrEmpty(doorId) && !UniqueDoorRegistry.IsKeyCommitted(doorId))
+    //     {
+    //         _doorId = doorId;
+    //         _keyPrefab = keyPrefab;
+    //         _isKeyBearer = true;
+
+    //         // 이 시점에 "이 문에서는 키 스폰/드롭이 커밋됨"으로 기록 → 문당 1회 보장
+    //         UniqueDoorRegistry.MarkKeySpawnedOrDropped(doorId);
+    //     }
+    //     else
+    //     {
+    //         // 이미 커밋된 문이면 비키 보유자로 동작
+    //         _isKeyBearer = false;
+    //     }
+    // }
+
+    // ===== IDamageable: 몬스터가 '맞을 때' 호출됨 =====
+    public void TakeDamage(int damage)
     {
-        if (_skillCooldown <= 0f) return; // 스킬 비활성화
-        if (Time.time < _lastSkillTime + _skillCooldown) return;
+        // 실피해 = damage / max(1, _defense) → 소수점 1자리 반올림 → 최종 정수 반올림
+        int applied = CalculateReducedDamage(damage, _defense);
+        if (applied <= 0) return;
 
-        float dist = Vector2.Distance(transform.position, _target.position);
-        if (dist > _skillRange) return;
-
-        // 라인오브사이트(시야) 체크
-        Vector2 origin = _castOrigin.position;
-        Vector2 dir = (_target.position - _castOrigin.position).normalized;
-        var hit = Physics2D.Raycast(origin, dir, _skillRange, _skillLineMask);
-        if (hit && hit.transform != _target) return;
-
-        // 캐스트 실행
-        OnCastSkill(_target);
-        _lastSkillTime = Time.time;
-    }
-    private float _lastSkillTime = -999f;
-
-    // 스킬 실제 구현 훅
-    private void OnCastSkill(Transform target)
-    {
-        // [예측/자리표시자] — 투사체가 설정되면 발사,
-        // 없으면 로그만 남깁니다. 프로젝트에 맞는 이펙트/디버프/버프 등으로 교체하세요.
-        if (_projectilePrefab != null)
-        {
-            var go = Instantiate(_projectilePrefab, _castOrigin.position, Quaternion.identity);
-            // 간단 투사체 추진
-            if (go.TryGetComponent<Rigidbody2D>(out var rb))
-            {
-                Vector2 dir = (target.position - _castOrigin.position).normalized;
-                rb.linearVelocity = dir * _projectileSpeed;
-            }
-            // [예측/자리표시자] 투사체에 충돌 시 플레이어에 데미지 주는 스크립트를 붙이는 것을 권장합니다.
-        }
-        else
-        {
-            Debug.Log($"{name} cast skill at {target.name}"); // [예측/자리표시자]
-        }
+        _health -= applied;
+        if (_health <= 0) Die();
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private static int CalculateReducedDamage(int rawDamage, int defense)
     {
-        // 트리거 기반 근접 히트가 필요한 경우(예: 무기 콜라이더), 쿨다운 적용
-        if (!collision.CompareTag("Player")) return;
-        if (Time.time < _lastMeleeTime + _meleeCooldown) return;
+        int raw = Mathf.Max(0, rawDamage);
+        int divisor = (defense == 0) ? 1 : defense;
 
-        if (collision.TryGetComponent<Player>(out Player player))
-        {
-            player.TakeDamage(_damage);
-            _lastMeleeTime = Time.time;
-        }
+        float reduced = (float)raw / divisor;
+        float rounded1dec = Mathf.Round(reduced * 10f) / 10f; // 소수점 1자리 반올림
+        return Mathf.RoundToInt(rounded1dec);                  // 최종 정수 반올림
     }
 
     private void Die()
     {
-        // [예측/자리표시자] 사망 이펙트/사운드/루팅 등
-        // 열쇠를 가진 유니크 몬스터인 경우, 문 로직이 CarriedKeyId를 확인하도록 하세요.
-        OnDied?.Invoke(this);
+        // 키 보유자라면 드롭은 1회만 — 이미 스폰 시점에 커밋했지만 안전하게 드롭도 수행
+        if (_isKeyBearer && _keyPrefab != null)
+        {
+            // Instantiate(_keyPrefab, transform.position, Quaternion.identity);
+            // if (!string.IsNullOrEmpty(_doorId))
+            //     UniqueDoorRegistry.MarkKeyDropped(_doorId);
+        }
 
-        // 기본 처리: 비활성화(원하면 Destroy 사용)
-        gameObject.SetActive(false);
+        gameObject.SetActive(false); // 풀링 고려. 필요시 Destroy(gameObject)로 교체
     }
 
-    public void TakeDamage(int damage)
-    {
-        _health -= damage;
-        if (_health <= 0) Die();
-    }
-    // 디버그/툴링 가시화
+    // 에디터 디버그
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, _meleeRange);
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(_castOrigin ? _castOrigin.position : transform.position, _skillRange);
-
-        // 시야 레이 가시화(대략적인 방향)
-        if (_target != null)
+        var col = GetComponent<BoxCollider2D>();
+        if (col)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(
-                _castOrigin ? _castOrigin.position : transform.position,
-                _target.position
-            );
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(transform.position + (Vector3)col.offset, col.size);
         }
     }
 }
