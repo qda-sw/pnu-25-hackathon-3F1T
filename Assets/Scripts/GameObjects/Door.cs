@@ -6,7 +6,7 @@ public class Door : MonoBehaviour
     [SerializeField] private Animator _animator;
     [SerializeField] private string _openAnimationName = "Open";
     [SerializeField] private string _closeAnimationName = "Close";
-    private bool _isOpen = false;
+    private bool _isOpen = true;
 
 
     public bool IsOpen => _isOpen;

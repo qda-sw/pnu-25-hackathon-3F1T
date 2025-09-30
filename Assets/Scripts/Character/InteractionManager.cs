@@ -10,7 +10,7 @@ public class InteractionManager : MonoBehaviour
             if (item != null)
             {
                 Debug.Log($"Picked up item: {item.name}");
-                PlayerInventory.Instance.AddItem(item.ItemData.name, item.ItemData);
+                PlayerInventory.Instance.AddItem(item.ItemData.Id, item.ItemData);
                 Destroy(collision.gameObject);
             }
         }
